@@ -6,7 +6,23 @@ static_routes: std.StaticStringMap(Handler),
 dynamic_routes: std.StringHashMapUnmanaged(Handler),
 
 const Router = @This();
-const Handler = *const fn (*request.Request, *response.Response) anyerror!void;
+
+pub const Ctx = struct {
+    req: *request.Request,
+    resp: *response.Response,
+};
+
+/// HandlerFn is the structure of a middleware or an endpoint function which receives a context for the current request and response
+/// The context is passed between middleware and may be modified by them until the response is written and the connection closed
+const HandlerFn = *const fn (*Ctx) anyerror!void;
+
+/// Handler is a linked-list style structure of objects with a handle method which may have a next parameter for the next handler in their chain
+/// This allows for middleware to be implemented as a chain of middleware followed by an actual endpoint
+pub const Handler = struct {
+    handle: HandlerFn,
+    next: ?*const Handler = null,
+};
+
 pub const MimeType = enum {
     HTML,
     CSS,
@@ -68,7 +84,7 @@ pub fn addDynRoute(self: *Router, allocator: std.mem.Allocator, url: []const u8,
 //    CON - Have to figure out data stores for different kinds of request data (arraylist for wildcard, map for keyval)
 //
 // Going with 2
-fn matchRequest(self: *Router, req: *request.Request) !?Handler {
+fn matchRequest(self: *const Router, req: *request.Request) ?Handler {
     const req_uri = req.uri;
     for (self.static_routes.keys()) |key| {
         var base_tokens = std.mem.splitBackwardsScalar(u8, key, '/');
@@ -124,23 +140,45 @@ fn matchRequest(self: *Router, req: *request.Request) !?Handler {
     return null;
 }
 
-pub fn route(self: *Router, req: *request.Request, res: *response.Response) !void {
+pub fn route(self: *const Router, req: *request.Request, resp: *response.Response) !void {
     // Prioritize exact matches
     if (self.static_routes.has(req.uri)) {
-        const handler = self.static_routes.get(req.uri).?;
-        try handler(req, res);
-    } else if (self.dynamic_routes.contains(req.uri)) {
-        // Defer to dynamic routes if not found in static
-        const handler = self.dynamic_routes.get(req.uri).?;
-        try handler(req, res);
+        const handler: Handler = self.static_routes.get(req.uri).?;
+        var ctx: Ctx = .{ .req = req, .resp = resp };
+
+        handler.handle(&ctx) catch |err| {
+            std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
+            return;
+        };
+        while (handler.next) |h| {
+            h.*.handle(&ctx) catch |err| {
+                std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
+                return;
+            };
+        }
+        // } else if (self.dynamic_routes.contains(req.uri)) {
+        //     // Defer to dynamic routes if not found in static
+        //     const handler = self.dynamic_routes.get(req.uri).?;
+        //     try handler(.{ .req = req, .resp = resp });
     } else {
         // Attempt pattern matching
-        const matched_handler = try self.matchRequest(req);
+        const matched_handler: ?Handler = self.matchRequest(req);
+
         if (matched_handler) |handler| {
-            try handler(req, res);
+            var ctx: Ctx = .{ .req = req, .resp = resp };
+            handler.handle(&ctx) catch |err| {
+                std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
+                return;
+            };
+            while (handler.next) |h| {
+                h.*.handle(&ctx) catch |err| {
+                    std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
+                    return;
+                };
+            }
         } else {
             // All else fails,
-            try res.write_response(.NOTFOUND, "<html><body>Route not found</body></html>");
+            try resp.write_response(.NOTFOUND, "<html><body>Route not found</body></html>");
         }
     }
 }

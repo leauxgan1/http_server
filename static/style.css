@@ -1,3 +1,19 @@
-* {
-  background: blue;
+body {
+  background: hsla(125, 30%, 70%);
+  color: hsl(140, 70%, 30%);
+  text-align: center;
+
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+}
+
+main {
+  height: 50%;
+}
+
+footer {
+  position: fixed;
+  top: calc(100vh - 80px);
+  width: 100%;
 }

@@ -81,7 +81,7 @@ pub const Request = struct {
         const status_line_idx = std.mem.indexOfScalar(u8, req_buffer, '\n') orelse req_buffer.len;
         try req.parseStatus(req_buffer[0..status_line_idx]);
 
-        try req.headers.ensureTotalCapacity(allocator, 2048);
+        try req.headers.ensureTotalCapacity(allocator, 1024);
         // Parse headers
         try req.parseHeaders(allocator, req_buffer[status_line_idx + 1 .. length]);
 
