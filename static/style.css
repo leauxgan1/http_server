@@ -1,19 +1,46 @@
-body {
-  background: hsla(125, 30%, 70%);
-  color: hsl(140, 70%, 30%);
-  text-align: center;
+@import "https://unpkg.com/open-props";
+/* @import "https://unpkg.com/open-props/normalize.min.css"; */
 
-  width: 100vw;
+* {
+  text-align: center;
+  max-inline-size: unset;
+}
+
+body {
+  background: hsl(125 30% 70%);
+  color: hsl(140 70% 30%);
+  display: flex;
   height: 100vh;
-  margin: 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+a {
+  cursor: pointer;
+  color: hsl(205 70% 40%);
+  transition: 0.2s color;
+}
+
+a:hover {
+  color: hsl(155 70% 40%);
 }
 
 main {
-  height: 50%;
+  display: flex;
+  flex-direction: column;
+  height: 80%;
 }
 
 footer {
-  position: fixed;
-  top: calc(100vh - 80px);
   width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-align: center;
 }

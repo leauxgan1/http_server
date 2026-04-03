@@ -70,7 +70,7 @@ pub const Request = struct {
             .method = .GET,
             .uri = "/",
             .version = "1.1",
-            .headers = .{},
+            .headers = .empty,
             .params = null,
         };
 
@@ -81,7 +81,7 @@ pub const Request = struct {
         const status_line_idx = std.mem.indexOfScalar(u8, req_buffer, '\n') orelse req_buffer.len;
         try req.parseStatus(req_buffer[0..status_line_idx]);
 
-        try req.headers.ensureTotalCapacity(allocator, 1024);
+        try req.headers.ensureTotalCapacity(allocator, 52);
         // Parse headers
         try req.parseHeaders(allocator, req_buffer[status_line_idx + 1 .. length]);
 
@@ -128,7 +128,6 @@ pub const Request = struct {
     fn parseHeaders(self: *Request, allocator: std.mem.Allocator, header_lines: []u8) !void {
         var iter = std.mem.splitScalar(u8, header_lines, '\n');
         while (iter.next()) |line| {
-            std.log.info("{s}", .{line});
             var split = std.mem.splitSequence(u8, line, ": ");
             const header_name = split.next() orelse break;
             const header_val = split.next() orelse break;
