@@ -6,6 +6,7 @@ const Router = Server.Router;
 const Ctx = Router.Ctx;
 
 const Handler = Router.Handler;
+const HandlerFn = Router.HandlerFn;
 
 const log = std.log;
 const Io = std.Io;
@@ -21,14 +22,22 @@ pub fn main(init: std.process.Init.Minimal) !void {
     const io: std.Io = threaded.io();
 
     var router = Router.init(.{
-        .{
-            "/*", Handler{
-                .handle = &Endpoints.serveStatic,
-            },
-        },
-        .{ "/home", Handler{ .handle = &Middlewares.loggingMiddleware, .next = &Handler{ .handle = &Endpoints.home } } },
-        .{ "/about", Handler{ .handle = &Endpoints.about } },
-        .{ "/contact", Handler{ .handle = &Endpoints.contact } },
+        .{ "/*", &[_]HandlerFn{
+            &Middlewares.loggingMiddleware,
+            &Endpoints.serveStatic,
+        } },
+        .{ "/home", &[_]HandlerFn{
+            &Middlewares.loggingMiddleware,
+            &Endpoints.home,
+        } },
+        .{ "/about", &[_]HandlerFn{
+            &Middlewares.loggingMiddleware,
+            &Endpoints.about,
+        } },
+        .{ "/contact", &[_]HandlerFn{
+            &Middlewares.loggingMiddleware,
+            &Endpoints.contact,
+        } },
     });
     defer router.deinit(dba);
 
@@ -117,6 +126,6 @@ const Endpoints = struct {
 
 const Middlewares = struct {
     fn loggingMiddleware(ctx: *Ctx) !void {
-        std.log.info("{s}", .{ctx.req.uri});
+        std.log.info("From Logging Middleware: {s}", .{ctx.req.uri});
     }
 };

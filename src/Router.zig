@@ -14,14 +14,9 @@ pub const Ctx = struct {
 
 /// HandlerFn is the structure of a middleware or an endpoint function which receives a context for the current request and response
 /// The context is passed between middleware and may be modified by them until the response is written and the connection closed
-const HandlerFn = *const fn (*Ctx) anyerror!void;
+pub const HandlerFn = *const fn (*Ctx) anyerror!void;
 
-/// Handler is a linked-list style structure of objects with a handle method which may have a next parameter for the next handler in their chain
-/// This allows for middleware to be implemented as a chain of middleware followed by an actual endpoint
-pub const Handler = struct {
-    handle: HandlerFn,
-    next: ?*const Handler = null,
-};
+pub const Handler = []const HandlerFn;
 
 pub const MimeType = enum {
     HTML,
@@ -52,9 +47,18 @@ pub const MimeType = enum {
     }
 };
 
-pub fn init(comptime kvs: anytype) Router {
+// Eventually make listings more structured with below
+// const RouteListing = struct {
+//     uri: []const u8,
+//     handler: Handler,
+// };
+
+pub fn init(listings: anytype) Router {
+    // Receiving input like .{.{"/uri", .{list,of,handlers}}}
+    // Want to transform into .{.{"/uri",[_]HandlerList{list,of,handlers}}}
+    // So that we can pass it as one item into .initComptime for the StaticStringMap
     return .{
-        .static_routes = .initComptime(kvs),
+        .static_routes = .initComptime(listings),
         .dynamic_routes = std.StringHashMapUnmanaged(Handler){},
     };
 }
@@ -146,12 +150,8 @@ pub fn route(self: *const Router, req: *request.Request, resp: *response.Respons
         const handler: Handler = self.static_routes.get(req.uri).?;
         var ctx: Ctx = .{ .req = req, .resp = resp };
 
-        handler.handle(&ctx) catch |err| {
-            std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
-            return;
-        };
-        while (handler.next) |h| {
-            h.*.handle(&ctx) catch |err| {
+        for (handler) |h| {
+            h(&ctx) catch |err| {
                 std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
                 return;
             };
@@ -166,12 +166,8 @@ pub fn route(self: *const Router, req: *request.Request, resp: *response.Respons
 
         if (matched_handler) |handler| {
             var ctx: Ctx = .{ .req = req, .resp = resp };
-            handler.handle(&ctx) catch |err| {
-                std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
-                return;
-            };
-            while (handler.next) |h| {
-                h.*.handle(&ctx) catch |err| {
+            for (handler) |h| {
+                h(&ctx) catch |err| {
                     std.log.err("err: {s}", .{@typeName(@TypeOf(err))});
                     return;
                 };
