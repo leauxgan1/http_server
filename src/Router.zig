@@ -178,3 +178,25 @@ pub fn route(self: *const Router, req: *request.Request, resp: *response.Respons
         }
     }
 }
+test "Init Router with Varying Lengths of Handlers" {
+    const ta = std.testing.allocator;
+    const Endpoints = struct {
+        pub fn home(ctx: *Ctx) anyerror!void {
+            try ctx.resp.write_body(try std.fmt.allocPrint(ta, "Current method is: {d}...\n", .{@intFromEnum(ctx.req.method)}));
+            std.debug.assert(ctx.req.method == .DELETE);
+            try ctx.resp.write_response(.OK, "You have reached the home page!");
+        }
+    };
+
+    const Middleware = struct {
+        pub fn changeURI(ctx: *Ctx) anyerror!void {
+            ctx.req.method = .DELETE;
+        }
+    };
+
+    const routes = Router.init(.{
+        .{ "/home", &[_]HandlerFn{&Endpoints.home} },
+        .{ "/hometwo", &[_]HandlerFn{ &Middleware.changeURI, &Endpoints.home } },
+    });
+    _ = routes;
+}

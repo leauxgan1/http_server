@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "http_l", .module = mod },
             },
-            .single_threaded = true,
+            // .single_threaded = true,
         }),
     });
 

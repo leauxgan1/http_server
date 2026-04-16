@@ -17,6 +17,9 @@ pub fn main(init: std.process.Init.Minimal) !void {
     defer _ = alloc.deinit();
     const dba = alloc.allocator();
 
+    // var evented: std.Io.Evented = undefined;
+    // try evented.init(dba, .{ .environ = init.environ });
+    // const io = evented.io();
     var threaded: std.Io.Threaded = .init(dba, .{ .environ = init.environ });
     defer threaded.deinit();
     const io: std.Io = threaded.io();
@@ -88,7 +91,7 @@ const Endpoints = struct {
                 const parsed = ctx.req.parseQueryParams().?;
                 const file_name = if (std.mem.eql(u8, parsed, "")) "index.html" else parsed;
 
-                std.log.warn("{s}", .{parsed});
+                // std.log.warn("{s}", .{parsed});
 
                 const cwd = std.Io.Dir.cwd();
                 const file_dir = try std.Io.Dir.openDir(cwd, ctx.req.io, config.static_dir, .{ .iterate = true });
@@ -99,6 +102,7 @@ const Endpoints = struct {
                         return;
                     },
                     else => {
+                        log.err("{any}\n", .{err});
                         return err;
                     },
                 };
