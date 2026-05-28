@@ -28,7 +28,6 @@ pub const MethodMap = std.StaticStringMap(Method).initComptime(.{
 });
 
 pub const Request = struct {
-    io: std.Io,
     method: Method,
     uri: []const u8,
     version: []const u8,
@@ -66,7 +65,6 @@ pub const Request = struct {
         const reader = &conn_reader.interface;
 
         var req: Request = .{
-            .io = io,
             .method = .GET,
             .uri = "/",
             .version = "1.1",
@@ -81,7 +79,7 @@ pub const Request = struct {
         const status_line_idx = std.mem.indexOfScalar(u8, req_buffer, '\n') orelse req_buffer.len;
         try req.parseStatus(req_buffer[0..status_line_idx]);
 
-        try req.headers.ensureTotalCapacity(allocator, 52);
+        try req.headers.ensureTotalCapacity(allocator, 512);
         // Parse headers
         try req.parseHeaders(allocator, req_buffer[status_line_idx + 1 .. length]);
 
@@ -126,12 +124,13 @@ pub const Request = struct {
         self.version = version;
     }
     fn parseHeaders(self: *Request, allocator: std.mem.Allocator, header_lines: []u8) !void {
+        _ = allocator;
         var iter = std.mem.splitScalar(u8, header_lines, '\n');
         while (iter.next()) |line| {
             var split = std.mem.splitSequence(u8, line, ": ");
             const header_name = split.next() orelse break;
             const header_val = split.next() orelse break;
-            try self.headers.put(allocator, header_name, header_val);
+            self.headers.putAssumeCapacity(header_name, header_val);
         }
     }
     fn readBody() void {}

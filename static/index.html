@@ -1,31 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<meta name="description" content="">
+		<meta http-equiv="Content-Security-Policy" content="script-src 'self'">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="">
+		<title>Hello, world!</title>
+		<link rel="stylesheet" type="text/css" href="style.css">
+		<link rel="icon" href="favicon.png">
+		<script src="/htmx.min.js"></script>
+	</head>
 
-  <title>Hello, world!</title>
-
-  <link rel="stylesheet" type="text/css" href="style.css">
-  <link rel="icon" href="favicon.png">
-
-  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
-</head>
-
-<body hx-push-url="true" hx-target="main">
-  <main>
-    <h1>Hello, world!</h1>
-    <a hx-get="/home" href="/home"> home </a>
-    <a hx-get="/about" href="/about"> about </a>
-    <a hx-get="/contact" href="/contact"> contact </a>
-  </main>
-  <footer>
-    <hr>
-    <p> ~ created by a human with tender love and care ~ </p>
-    <hr>
-  </footer>
-</body>
-
+	<!-- <body hx-push-url="true" hx-target="main"> -->
+	<body hx-push-url="true" hx-boost:inherited="target:#main select:body">
+		<main id="main">
+			<h1>Hello, world!</h1>
+			<a href="/home.html">
+				home
+			</a>
+			<a href="/about.html">
+				about
+			</a>
+			<a href="/contact.html">
+				contact
+			</a>
+		</main>
+		<footer>
+			<hr>
+			<p>
+				~ created by a human with tender love and care ~
+			</p>
+			<hr>
+		</footer>
+	</body>
 </html>

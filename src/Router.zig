@@ -8,6 +8,7 @@ dynamic_routes: std.StringHashMapUnmanaged(Handler),
 const Router = @This();
 
 pub const Ctx = struct {
+    io: std.Io,
     req: *request.Request,
     resp: *response.Response,
 };
@@ -144,11 +145,15 @@ fn matchRequest(self: *const Router, req: *request.Request) ?Handler {
     return null;
 }
 
-pub fn route(self: *const Router, req: *request.Request, resp: *response.Response) !void {
+pub fn route(self: *const Router, io: std.Io, req: *request.Request, resp: *response.Response) !void {
     // Prioritize exact matches
     if (self.static_routes.has(req.uri)) {
         const handler: Handler = self.static_routes.get(req.uri).?;
-        var ctx: Ctx = .{ .req = req, .resp = resp };
+        var ctx: Ctx = .{
+            .io = io,
+            .req = req,
+            .resp = resp,
+        };
 
         for (handler) |h| {
             h(&ctx) catch |err| {
@@ -163,9 +168,12 @@ pub fn route(self: *const Router, req: *request.Request, resp: *response.Respons
     } else {
         // Attempt pattern matching
         const matched_handler: ?Handler = self.matchRequest(req);
-
         if (matched_handler) |handler| {
-            var ctx: Ctx = .{ .req = req, .resp = resp };
+            var ctx: Ctx = .{
+                .io = io,
+                .req = req,
+                .resp = resp,
+            };
             for (handler) |h| {
                 h(&ctx) catch |err| {
                     std.log.err("err: {s}", .{@typeName(@TypeOf(err))});

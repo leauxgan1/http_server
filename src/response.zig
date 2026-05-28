@@ -1,4 +1,6 @@
 const std = @import("std");
+const Router = @import("Router.zig");
+
 const fmt = std.fmt;
 const Io = std.Io;
 const Stream = std.Io.net.Stream;
@@ -51,6 +53,43 @@ pub const Response = struct {
     }
     pub fn write_response(self: *Response, status: Status, message: []const u8) Io.Writer.Error!void {
         _ = try self.writer.print(responseTemplate, .{ status, status.toStr(), message.len, message });
+        try self.writer.flush();
+    }
+    pub fn write_file(
+        self: *Response,
+        io: std.Io,
+        file: std.Io.File,
+        file_type: Router.MimeType,
+    ) !void {
+        try self.write_status(.OK);
+        try self.write_header("Access-Control-Allow-Origin", "*");
+        try self.write_header("Content-Type", file_type.toStr());
+        // try self.write_header("Content-Security-Policy", "script-src 'self'");
+
+        try self.end_header();
+
+        // Read out contents of file
+        var file_buf: [2048]u8 = undefined;
+        var file_reader = file.reader(io, &file_buf);
+        var reader = &file_reader.interface;
+
+        // Read and write bytes to the buffer
+        while (true) {
+            const bytes = reader.take(100) catch |err| switch (err) {
+                error.EndOfStream => {
+                    const rest = reader.buffered();
+                    if (rest.len > 0) {
+                        try self.write_body(rest);
+                    }
+                    break;
+                },
+                error.ReadFailed => {
+                    return err;
+                },
+            };
+            try self.write_body(bytes);
+        }
+
         try self.writer.flush();
     }
     // pub fn write_err(self: *Response, status: Status, message: []const u8) Io.Writer.Error!void {

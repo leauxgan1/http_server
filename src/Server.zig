@@ -18,10 +18,10 @@ port: u16,
 addr: Io.net.IpAddress,
 io: Io,
 allocator: std.mem.Allocator,
-arena: ?std.heap.ArenaAllocator,
+arena: *std.heap.ArenaAllocator,
 router: ?Router,
 
-pub fn init(allocator: std.mem.Allocator, host: []const u8, port: u16, io: Io, router: ?Router) !Server {
+pub fn init(allocator: std.mem.Allocator, arena: *std.heap.ArenaAllocator, host: []const u8, port: u16, io: Io, router: ?Router) !Server {
     const address: Io.net.IpAddress = try .parseIp4(host, port);
     return .{
         .allocator = allocator,
@@ -29,7 +29,7 @@ pub fn init(allocator: std.mem.Allocator, host: []const u8, port: u16, io: Io, r
         .port = port,
         .addr = address,
         .io = io,
-        .arena = null,
+        .arena = arena,
         .router = router,
     };
 }
@@ -51,8 +51,8 @@ pub fn listenAndServe(self: Server) !void {
         var resp_buffer: [1024]u8 = undefined;
         @memset(resp_buffer[0..], 0);
 
-        var req = try request.Request.from_conn(self.allocator, self.io, conn, req_buffer[0..]);
-        defer req.deinit(self.allocator);
+        var req = try request.Request.from_conn(self.arena.allocator(), self.io, conn, req_buffer[0..]);
+        defer _ = self.arena.reset(.free_all);
 
         var writer_interface = conn.writer(self.io, resp_buffer[0..]);
         const writer = &writer_interface.interface;
@@ -62,7 +62,11 @@ pub fn listenAndServe(self: Server) !void {
         );
         log.info("{s}", .{req.uri});
 
-        try self.router.?.route(&req, &resp);
+        if (self.router) |r| {
+            var route_future = self.io.async(Router.route, .{ &r, self.io, &req, &resp });
+            defer route_future.cancel(self.io) catch {};
+            _ = try route_future.await(self.io);
+        }
     }
 }
 

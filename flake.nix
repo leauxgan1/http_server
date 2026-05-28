@@ -13,7 +13,6 @@
       systems = ["x86_64-linux" "x86_64-darwin"];
       perSystem = {pkgs, self', system,...}: {
         packages.zig = inputs.zig.packages.${system}.master;
-
         devShells.default = pkgs.mkShell {
           packages = [
             self'.packages.zig
